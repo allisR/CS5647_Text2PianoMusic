@@ -8,7 +8,6 @@ class BERT_Encoder(nn.Module):
     def __init__(self, hidden):
         super(BERT_Encoder, self).__init__()
         self.bert = BertModel.from_pretrained("bert-base-uncased", output_attentions=True)
-        self.dropout = nn.Dropout(0.35)
         self.mlp = nn.Linear(768, hidden)
 
     def forward(
@@ -25,9 +24,8 @@ class BERT_Encoder(nn.Module):
             token_type_ids=token_type_ids,
             return_dict=return_dict,
         )
-        pooled_output = outputs['pooler_output']
-        pooled_output = self.dropout(pooled_output)
-        logits = self.mlp(pooled_output)
+        last_hidden_state = outputs['last_hidden_state']
+        logits = self.mlp(last_hidden_state)
         return logits
     
     
