@@ -14,7 +14,9 @@ class Audio_Decoder(nn.Module):
 
     def forward(self, text_embed, audio):
         audio_embed = self.embedding_decoder(audio)
-        decoder_h_seq, _ = self.decoder(audio_embed, text_embed) # seq batch embed [S, B, E]
+        audio_embed = torch.permute(audio_embed, (1, 0, 2))
+        print(audio_embed.shape, text_embed.shape)
+        decoder_h_seq = self.decoder(audio_embed, text_embed) # seq batch embed [S, B, E]
         decoder_h_seq = torch.permute(decoder_h_seq, (1,0,2))
         output = self.out(decoder_h_seq)
         return output
