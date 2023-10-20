@@ -50,14 +50,20 @@ class ContextDataset(Dataset):
             "token_type_ids": embedding['token_type_ids'].flatten()
         }
 
-txt = ["I love u", "You love me"]
+txt = ["I love", "You love me"]
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 train_dataset = ContextDataset(txt, tokenizer, 5)
-train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=2, shuffle=True)
+train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=1, shuffle=True)
 
+audio_example = torch.randint(0, 10, (1, 8)) # B S
 
 model = Audio_Generator(target_vocab_size = 10, embed_dim = 100, decoder_nhead = 2, decoder_num_layers = 1)
 for i, embeddings in enumerate(train_loader):
-    print(model(embeddings, torch.randint(0, 10, (2, 8))).shape)
+    print(embeddings)
+    print(model(embeddings, audio_example).shape)
+    print(model.predict(embeddings))
+    break
+
+
 
 
