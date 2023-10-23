@@ -8,6 +8,7 @@ import torch
 import torch.nn.functional as F
 import gensim
 import nltk
+from parse import parse_args
 from nltk.corpus import brown
 from nltk.tokenize import sent_tokenize
 from torch.utils.data import Dataset, DataLoader
@@ -56,32 +57,11 @@ class ContextDataset(Dataset):
 
 
 
-parser = argparse.ArgumentParser()
-# experimental settings
-parser.add_argument("--base_path",
-    type=str,
-    default="./maestro-v2.0.0/",
-    help="base_path of audio data")
-parser.add_argument("--csv_path", 
-    type=str,
-    default="./data/clean+GPTcaption.csv",
-    help="csv dataset path")
-parser.add_argument("--max_text_lenth", 
-    type=int,
-    default=512,
-    help="max_lenth for bert tokenizer")
-parser.add_argument("--batch_size", 
-    type=int,
-    default=5,
-    help="batch size for dataloader")
-parser.add_argument("--frame", 
-    type=int,
-    default=100,
-    help="#frame/sec for audio")
-args = parser.parse_args()
 
-base_path = args['base_path'] # './maestro-v2.0.0/'
-csv_path = args['csv_path'] # './data/clean+GPTcaption.csv'
+args = parse_args()
+
+base_path = args.base_path # './maestro-v2.0.0/'
+csv_path = args.csv_path # './data/clean+GPTcaption.csv'
 
 data = read_csv(csv_path)
 
@@ -98,7 +78,7 @@ train_text = text_descriptions[:train_num] # [train_num]
 valid_text = text_descriptions[train_num:train_num+valid_num]
 test_text = text_descriptions[train_num+valid_num:]
 
-audios = midi_files_to_audios(midi_files,args['frame'])
+audios = midi_files_to_audios(midi_files, args.frame)
 train_audios = audios[:train_num] # [train_num, frame*time]
 valid_audios = audios[train_num:train_num+valid_num]
 test_audios = audios[train_num+valid_num:]
