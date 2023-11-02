@@ -8,10 +8,18 @@ def parse_args():
         type=str,
         default="./maestro-v2.0.0/",
         help="base_path of audio data")
-    parser.add_argument("--csv_path",
+    parser.add_argument("--data_path",
         type=str,
-        default="./data/clean+GPTcaption.csv",
-        help="csv dataset path")
+        default="./data",
+        help="dataset path")
+    parser.add_argument("--model_path",
+        type=str,
+        default="./models",
+        help="model save path")
+    parser.add_argument("--log_name",
+        type=str,
+        default="log",
+        help="log name")
     parser.add_argument("--max_text_lenth",
         type=int,
         default=512,
@@ -24,5 +32,11 @@ def parse_args():
         type=int,
         default=100,
         help="#frame/sec for audio")
+    parser.add_argument("--num_epochs",
+        type=int,
+        default=20,
+        help="#of epochs for training")
+    
+
 
     return parser.parse_args()
