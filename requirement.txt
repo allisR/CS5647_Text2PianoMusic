@@ -1,0 +1,5 @@
+nltk
+transformers
+scikit-learn
+pandas
+pretty_midi
