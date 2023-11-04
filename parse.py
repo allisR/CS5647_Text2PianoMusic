@@ -22,7 +22,7 @@ def parse_args():
         help="log name")
     parser.add_argument("--max_text_lenth",
         type=int,
-        default=512,
+        default=128,
         help="max_lenth for bert tokenizer")
     parser.add_argument("--batch_size",
         type=int,
@@ -30,7 +30,7 @@ def parse_args():
         help="batch size for dataloader")
     parser.add_argument("--frame",
         type=int,
-        default=100,
+        default=5,
         help="#frame/sec for audio")
     parser.add_argument("--num_epochs",
         type=int,

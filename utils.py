@@ -50,8 +50,10 @@ def midi_files_to_audios(midi_files, frame = 100):
             max_end = max(max_end, end)
             audios.append(notes)
         output_audios = np.zeros([len(audios),int(max_end)*frame+frame])
+        padding_masks = np.zeros([len(audios),int(max_end)*frame+frame])
         for i,j in enumerate(audios):
-             for k in j:
+            for k in j:
                 output_audios[i][int(k[1]*frame):int(k[2]*frame)] = k[0]
-        return output_audios
+            padding_masks[i][:int(k[2]*frame)] = 1
+        return output_audios, padding_masks
 

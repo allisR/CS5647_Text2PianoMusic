@@ -28,11 +28,12 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import f1_score
 
 class ContextDataset(Dataset):
-    def __init__(self, x_inputs, tokenizer, max_len, audios, device):
+    def __init__(self, x_inputs, tokenizer, max_len, audios, padding_masks, device):
         self.x = x_inputs
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.audios = audios
+        self.padding_masks = padding_masks
         self.device = device
 
     def __len__(self):
@@ -41,6 +42,7 @@ class ContextDataset(Dataset):
     def __getitem__(self, index):
         text = self.x[index]
         audio = self.audios[index]
+        padding_mask = self.padding_masks[index]
 
         embedding = self.tokenizer.encode_plus(
             text,
@@ -53,13 +55,15 @@ class ContextDataset(Dataset):
             truncation=True
         )
 
-        return {"input_ids": embedding['input_ids'].flatten().to(self.device),
-            "attention_mask": embedding['attention_mask'].flatten().to(self.device),
-            "token_type_ids": embedding['token_type_ids'].flatten().to(self.device)
-        }, audio
+        return embedding['input_ids'].flatten(),embedding['attention_mask'].flatten(),embedding['token_type_ids'].flatten(), audio, padding_mask
+        # return {"input_ids": embedding['input_ids'].flatten().to(self.device),
+        # "attention_mask": embedding['attention_mask'].flatten().to(self.device),
+        # "token_type_ids": embedding['token_type_ids'].flatten().to(self.device)
+        # }, audio, padding_mask
 
 
 
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 args = parse_args()
 
@@ -75,13 +79,13 @@ if not os.path.exists(processed_path):
     data = read_csv(csv_path)
     midi_files = get_midi_files(data,base_path)
     text_descriptions = get_text_descriptions(data)
-    audios = midi_files_to_audios(midi_files, args.frame)
-    data_dict = {'text_descriptions':text_descriptions, 'audios':audios}
+    audios, padding_masks = midi_files_to_audios(midi_files, args.frame)
+    data_dict = {'text_descriptions':text_descriptions, 'audios':audios, 'padding_masks':padding_masks}
     np.save(processed_path, data_dict)
 else:
     print('loading data...')
     data_dict = np.load(processed_path, allow_pickle=True).item()
-    text_descriptions, audios = data_dict['text_descriptions'], data_dict['audios']
+    text_descriptions, audios, padding_masks = data_dict['text_descriptions'], data_dict['audios'], data_dict['padding_masks']
 
 num_data = len(text_descriptions)
 train_num = int(num_data * 0.8)
@@ -96,22 +100,27 @@ train_audios = audios[:train_num] # [train_num, frame*time]
 valid_audios = audios[train_num:train_num+valid_num]
 test_audios = audios[train_num+valid_num:]
 
+train_padding_masks = padding_masks[:train_num] # [train_num, frame*time]
+valid_padding_masks = padding_masks[train_num:train_num+valid_num]
+test_padding_masks = padding_masks[train_num+valid_num:]
+
 print('generating dataset...')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cpu")
 # txt = ["I love", "You love me"]
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-train_dataset = ContextDataset(train_text, tokenizer, args.max_text_lenth, train_audios, device)
+train_dataset = ContextDataset(train_text, tokenizer, args.max_text_lenth, train_audios, train_padding_masks, device)
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size= args.batch_size, shuffle=True)
 
-valid_dataset = ContextDataset(valid_text, tokenizer, args.max_text_lenth, valid_audios, device)
+valid_dataset = ContextDataset(valid_text, tokenizer, args.max_text_lenth, valid_audios, valid_padding_masks, device)
 valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size= args.batch_size, shuffle=False)
 
-test_dataset = ContextDataset(test_text, tokenizer, args.max_text_lenth, test_audios, device)
+test_dataset = ContextDataset(test_text, tokenizer, args.max_text_lenth, test_audios, test_padding_masks, device)
 test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size= args.batch_size, shuffle=False)
 
 # audio_example = torch.randint(0, 10, (1, 8)) # B S
 
-model = Audio_Generator(target_vocab_size = 10, embed_dim = 100, decoder_nhead = 2, decoder_num_layers = 1)
+model = Audio_Generator(target_vocab_size = 128, embed_dim = 100, decoder_nhead = 2, decoder_num_layers = 1)
 
 model.to(device)
 lrlast = .0001
@@ -138,10 +147,14 @@ for epoch in range(args.num_epochs):
     loss = 0
 
     for i, batchi in enumerate(train_loader):
-        embeddings, audio = batchi
-        audio = audio.to(device)
+        input_ids, attention_mask, token_type_ids, audio, padding_mask = batchi
+        input_ids = input_ids.to(device)
+        attention_mask = attention_mask.to(device)
+        token_type_ids = token_type_ids.to(device)
+        audio = audio.type(torch.LongTensor).to(device)
+        padding_mask = padding_mask.type(torch.bool).to(device)
         model.zero_grad()
-        prediction = model(embeddings, audio)
+        prediction = model(input_ids, attention_mask, audio, padding_mask)
         loss += criterion(prediction, audio)
         loss.backward()
         optimizer.step()
@@ -154,9 +167,13 @@ for epoch in range(args.num_epochs):
         all_prediction = None
         all_audio = None
         for i, batchi in enumerate(valid_loader):
-            embeddings, audio = batchi
-            audio = audio.to(device)
-            prediction = model.predict(embeddings)
+            input_ids, attention_mask, token_type_ids, audio, padding_mask = batchi
+            input_ids = input_ids.to(device)
+            attention_mask = attention_mask.to(device)
+            token_type_ids = token_type_ids.to(device)
+            audio = audio.type(torch.LongTensor).to(device)
+            padding_mask = padding_mask.type(torch.bool).to(device)
+            prediction = model.predict(input_ids, attention_mask)
             if all_prediction is None:
                 all_prediction = torch.flatten(prediction)
                 all_audio = torch.flatten(audio)
@@ -196,8 +213,13 @@ all_prediction = None
 all_audio = None
 with torch.no_grad():
     for i, batchi in enumerate(test_loader):
-        embeddings, audio = batchi
-        audio = audio.to(device)
+        input_ids, attention_mask, token_type_ids, audio, padding_mask = batchi
+        input_ids = input_ids.to(device)
+        attention_mask = attention_mask.to(device)
+        token_type_ids = token_type_ids.to(device)
+        audio = audio.type(torch.LongTensor).to(device)
+        padding_mask = padding_mask.type(torch.bool).to(device)
+        prediction = model.predict(input_ids, attention_mask)
         prediction = model.predict(embeddings)
         if all_prediction is None:
             all_prediction = prediction.reshape(1,-1)
