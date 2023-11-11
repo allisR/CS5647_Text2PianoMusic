@@ -75,6 +75,7 @@ def load_data(processed_path, csv_path, base_path, frame):
         print('loading data...')
         data_dict = np.load(processed_path, allow_pickle=True).item()
         text_descriptions, audios, padding_masks = data_dict['text_descriptions'], data_dict['audios'], data_dict['padding_masks']
+        # print(np.sum(audios[0][:int(np.sum(padding_masks[0]))] == 0), np.sum(padding_masks[0]) )
     return text_descriptions, audios, padding_masks
 
 
