@@ -27,7 +27,6 @@ class Audio_Decoder(nn.Module):
         B, S, E = audio_embed.shape
         audio_embed = torch.permute(audio_embed, (1, 0, 2))
 
-        print(audio_embed.shape, text_embed.shape)
         if self.src_mask is None or self.src_mask.size(0) != S:
             device = audio.device
             self.src_mask = self._generate_square_subsequent_mask(S).to(device)
@@ -39,8 +38,8 @@ class Audio_Decoder(nn.Module):
         return output
 
     def predict(self, text_embed, memory_key_padding_mask):
-        start = torch.tensor([[0]]).type(torch.LongTensor)
-        for i in range(5):
+        start = torch.tensor([[129]]).type(torch.LongTensor)
+        while True:
             audio_embed = self.embedding_encoder(start)
             audio_embed = self.pos_decoder(audio_embed)
             audio_embed = torch.permute(audio_embed, (1, 0, 2))
@@ -50,7 +49,7 @@ class Audio_Decoder(nn.Module):
             output = self.out(decoder_h_seq)
             output = torch.argmax(output, dim=2)[0][-1].reshape(1,-1)
             start = torch.cat([start, output], 1)
-            if start[0][-1].item() == 3:
+            if start[0][-1].item() == 130:
                 break
         return start
 
