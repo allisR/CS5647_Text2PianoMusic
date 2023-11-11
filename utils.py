@@ -42,6 +42,7 @@ def midi_files_to_audios(midi_files, frame = 100):
         # 128 as start index, 129 as end index
         start_idx = 129
         end_idx = 130
+        pad_idx = 131
         frame = int(frame)
         audios = []
         max_end = 0
@@ -59,7 +60,8 @@ def midi_files_to_audios(midi_files, frame = 100):
                 output_audios[i][int(k[1]*frame)+1:int(k[2]*frame)+1] = k[0] + 1
             output_audios[i][int(k[2]*frame)] = end_idx
             output_audios[i][0] = start_idx
-            padding_masks[i][:int(k[2]*frame)+1] = 1
+            padding_masks[i][int(k[2]*frame)+1:] = 1
+            output_audios[i][int(k[2]*frame)+1:] = pad_idx
         return output_audios, padding_masks
 
 def load_data(processed_path, csv_path, base_path, frame):

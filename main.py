@@ -8,7 +8,9 @@ import torch
 import torch.nn.functional as F
 import nltk
 import time
+import sys
 import os
+from tqdm import tqdm
 from parse import parse_args
 from torch.optim import lr_scheduler
 from nltk.corpus import brown
@@ -59,7 +61,7 @@ if __name__ == '__main__':
 
     # audio_example = torch.randint(0, 10, (1, 8)) # B S
 
-    model = Audio_Generator(target_vocab_size = 128+3, embed_dim = 100, decoder_nhead = 2, decoder_num_layers = 1)
+    model = Audio_Generator(target_vocab_size = 128+4, embed_dim = 100, decoder_nhead = 2, decoder_num_layers = 1)
 
     model.to(device)
     lrlast = .0001
@@ -89,7 +91,8 @@ if __name__ == '__main__':
         start_time = time.time()
         t_loss = 0
         train_num = 0 
-        for i, batchi in enumerate(train_loader):
+        pbar = tqdm(enumerate(train_loader), total=len(train_loader))
+        for i, batchi in pbar:
             input_ids, attention_mask, token_type_ids, audio, padding_mask = batchi
             input_ids = input_ids.to(device)
             attention_mask = attention_mask.to(device)
@@ -97,11 +100,9 @@ if __name__ == '__main__':
             audio = audio.type(torch.LongTensor).to(device)
             padding_mask = padding_mask.type(torch.bool).to(device)
             prediction = model(input_ids, attention_mask, audio, padding_mask)
-
             bs, seq_length, vocab_size = prediction.shape
             scores =   prediction.view(bs*seq_length , vocab_size)  
             audio_label =  audio.view(bs*seq_length )   
-
             loss = criterion(scores, audio_label)
             optimizer.zero_grad()
             loss.backward()
@@ -116,6 +117,7 @@ if __name__ == '__main__':
                             "%H: %M: %S", time.gmtime(time.time()-start_time)))
         scheduler.step()
         with torch.no_grad():
+            model.eval()
             all_prediction = None
             all_audio = None
             for i, batchi in enumerate(valid_loader):

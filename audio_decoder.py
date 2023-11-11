@@ -6,9 +6,10 @@ import math
 class Audio_Decoder(nn.Module):
     def __init__(self, target_vocab_size, embed_dim, nhead, num_layers):
         super(Audio_Decoder, self).__init__()
+        self.d_model = embed_dim
         self.embedding_encoder = nn.Embedding(target_vocab_size, embed_dim)
         # self.decoder = nn.LSTM(embed_dim, embed_dim)
-        self.pos_decoder = PositionalEncoding(embed_dim)
+        self.pos_decoder = PositionalEncoding(d_model=embed_dim)
         decoder_layer = nn.TransformerDecoderLayer(d_model=embed_dim, nhead=nhead)
         self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
         self.out = nn.Linear(embed_dim, target_vocab_size)
@@ -22,17 +23,19 @@ class Audio_Decoder(nn.Module):
         self.out.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, text_embed, audio, memory_key_padding_mask, tgt_key_padding_mask):
-        audio_embed = self.embedding_encoder(audio)
+        audio = torch.permute(audio, (1,0))
+        audio_embed = self.embedding_encoder(audio)* math.sqrt(self.d_model)
+        S, B, E =  audio_embed.shape
         audio_embed = self.pos_decoder(audio_embed)
-        B, S, E = audio_embed.shape
-        audio_embed = torch.permute(audio_embed, (1, 0, 2))
-
+        
         if self.src_mask is None or self.src_mask.size(0) != S:
             device = audio.device
-            self.src_mask = self._generate_square_subsequent_mask(S).to(device)
+            self.src_mask = nn.Transformer.generate_square_subsequent_mask(S).to(device)
 
-        decoder_h_seq = self.decoder(audio_embed, text_embed, tgt_mask = self.src_mask, tgt_key_padding_mask = tgt_key_padding_mask,
+        decoder_h_seq = self.decoder(tgt = audio_embed, memory = text_embed, tgt_mask = self.src_mask, 
+                                     tgt_key_padding_mask = tgt_key_padding_mask.type(torch.int64),
                                      memory_key_padding_mask = memory_key_padding_mask) # seq batch embed [S, B, E]
+        # decoder_h_seq = self.decoder(audio_embed, self.src_mask) # seq batch embed [S, B, E]
         decoder_h_seq = torch.permute(decoder_h_seq, (1,0,2))
         output = self.out(decoder_h_seq)
         return output
@@ -53,16 +56,10 @@ class Audio_Decoder(nn.Module):
                 break
         return start
 
-    def _generate_square_subsequent_mask(self, sz):
-        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-        # mask = mask.int()
-        return mask
-
 
 class PositionalEncoding(nn.Module):
 
-    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 20000):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout)
 
