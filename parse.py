@@ -26,7 +26,7 @@ def parse_args():
         help="max_lenth for bert tokenizer")
     parser.add_argument("--batch_size",
         type=int,
-        default=5,
+        default=4,
         help="batch size for dataloader")
     parser.add_argument("--frame",
         type=int,
@@ -35,6 +35,10 @@ def parse_args():
     parser.add_argument("--num_epochs",
         type=int,
         default=20,
+        help="#of epochs for training")
+    parser.add_argument("--max_len",
+        type=int,
+        default=2048,
         help="#of epochs for training")
     
 
