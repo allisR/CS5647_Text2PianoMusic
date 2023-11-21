@@ -10,7 +10,7 @@ class Audio_Generator(nn.Module):
         super(Audio_Generator, self).__init__()
         self.encoder = BERT_Encoder(hidden=embed_dim)
         self.decoder = Audio_Decoder(target_vocab_size = target_vocab_size, embed_dim = embed_dim, nhead = decoder_nhead, num_layers = decoder_num_layers, device = device)
-        self.decoder.load_state_dict(torch.load("best_acc_weights.pickle"))
+        self.decoder.load_state_dict(torch.load("best_acc_weights.pickle", map_location=device))
         print("Successful loaded decoder!")
 
     def forward(self, input_ids, attention_mask, audio, tgt_key_padding_mask):

@@ -76,7 +76,7 @@ class Audio_Decoder(nn.Module):
 
     def predict(self, text_embed, memory_key_padding_mask, device, target_seq_length=1024):
         ix = random.randrange(128)
-        gen_seq = torch.full((1,target_seq_length), TOKEN_PAD, dtype=TORCH_LABEL_TYPE, device=torch.device('cuda:0'))
+        gen_seq = torch.full((1,target_seq_length), TOKEN_PAD, dtype=TORCH_LABEL_TYPE, device=device)
         gen_seq[:, :1] = ix
         cur_i = 1
         while(cur_i < target_seq_length):

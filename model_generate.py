@@ -54,7 +54,7 @@ if __name__ == '__main__':
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size= args.batch_size, shuffle=False)
 
     model = Audio_Generator(target_vocab_size = VOCAB_SIZE, embed_dim = 512, decoder_nhead = 8, decoder_num_layers =  6, device = device)
-    model.load_state_dict(torch.load("all_best_acc.pickle"))
+    model.load_state_dict(torch.load("all_best_acc.pickle", map_location=device))
     print("successful load model")
     model.to(device)
 
