@@ -21,7 +21,7 @@ from dataset import ContextDataset
 from transformers import BertGenerationConfig, BertGenerationEncoder, EncoderDecoderModel, BertGenerationDecoder
 from third_party.constants import *
 from torch.utils.data import Dataset, DataLoader
-from dataset import create_epiano_datasets, compute_epiano_accuracy
+from dataset import compute_all_metrics
 from transformers import Trainer, TrainingArguments,BertTokenizer, BertModel, BertPreTrainedModel, BertConfig
 from lr_scheduling import LrStepTracker
 if __name__ == '__main__':
@@ -84,17 +84,28 @@ if __name__ == '__main__':
         with torch.no_grad():
             model.eval()
             sum_acc    = 0.0
+            sum_precision = 0.0
+            sum_recall = 0.0
+            sum_f = 0.0
             n_test     = len(val_loader)
             for i, batchi in enumerate(val_loader):
                 x   = batch[0].to(device)
                 label = batch[1].to(device)
                 y = model(text_embed = None, audio = x, memory_key_padding_mask =None ,tgt_key_padding_mask=None)
                 # y = model(x)
-                sum_acc += float(compute_epiano_accuracy(y, label))
+                acc,  precision, recall, f = compute_all_metrics(y, label)
+                sum_acc += acc
+                sum_precision += precision
+                sum_recall += recall
+                sum_f += f
 
-            epoch_acc     = sum_acc / n_test
-            acc_list.append(epoch_acc)
-            print("[Valid]: ACC: {} - F1:".format(str(epoch_acc)))
+            epoch_acc = sum_acc / n_test
+            epoch_pre = sum_precision / n_test
+            epoch_recall = sum_recall / n_test
+            epoch_f = sum_f / n_test
+            # acc_list.append(epoch_acc)
+            print("[Valid]: ACC: {} - Precision: {} Recall: {} F1:{}".format(str(epoch_acc), str(epoch_pre), str(epoch_recall), str(epoch_f)))
+
 
         if epoch_acc > best_acc: 
                 best_acc, best_epoch = epoch_acc, epoch

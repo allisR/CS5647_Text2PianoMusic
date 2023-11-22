@@ -24,7 +24,7 @@ from model import Audio_Generator
 from utils import *
 from sklearn.metrics import accuracy_score  
 from sklearn.metrics import f1_score
-from dataset import ContextDataset, compute_epiano_accuracy
+from dataset import ContextDataset, compute_all_metrics
 from transformers import BertGenerationConfig, BertGenerationEncoder, EncoderDecoderModel, BertGenerationDecoder
 from third_party.constants import *
 
@@ -105,6 +105,9 @@ if __name__ == '__main__':
         with torch.no_grad():
             model.eval()
             sum_acc    = 0.0
+            sum_precision = 0.0
+            sum_recall = 0.0
+            sum_f = 0.0
             n_test     = len(valid_loader)
             for i, batchi in enumerate(valid_loader):
                 optimizer.zero_grad()
@@ -115,11 +118,19 @@ if __name__ == '__main__':
                 label = label.type(torch.LongTensor).to(device)
                 # loss = model(input_ids=input_ids, decoder_input_ids = audio, labels=label, attention_mask = attention_mask, return_dict=True).loss
                 predictions = model(input_ids, attention_mask, audio, tgt_key_padding_mask=None)
-                sum_acc += float(compute_epiano_accuracy(predictions, label))
+                acc,  precision, recall, f = compute_all_metrics(predictions, label)
+                sum_acc += acc
+                sum_precision += precision
+                sum_recall += recall
+                sum_f += f
+
 
             epoch_acc = sum_acc / n_test
+            epoch_pre = sum_precision / n_test
+            epoch_recall = sum_recall / n_test
+            epoch_f = sum_f / n_test
             # acc_list.append(epoch_acc)
-            print("[Valid]: ACC: {} - F1:".format(str(epoch_acc)))
+            print("[Valid]: ACC: {} - Precision: {} Recall: {} F1:{}".format(str(epoch_acc), str(epoch_pre), str(epoch_recall), str(epoch_f)))
 
         if epoch_acc > best_acc: 
                 best_acc, best_epoch = epoch_acc, epoch

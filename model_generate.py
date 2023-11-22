@@ -22,9 +22,7 @@ from torch import nn
 from sklearn.metrics import f1_score
 from model import Audio_Generator
 from utils import *
-from sklearn.metrics import accuracy_score  
-from sklearn.metrics import f1_score
-from dataset import ContextDataset, compute_epiano_accuracy
+from dataset import ContextDataset, compute_all_metrics
 from transformers import BertGenerationConfig, BertGenerationEncoder, EncoderDecoderModel, BertGenerationDecoder
 from third_party.constants import *
 
@@ -60,16 +58,46 @@ if __name__ == '__main__':
 
     def test_predict(test_loader, device, model, write_path = './output_midi/'):
         with torch.no_grad():
+            model.eval()
+            sum_acc    = 0.0
+            sum_precision = 0.0
+            sum_recall = 0.0
+            sum_f = 0.0
+            n_test     = len(test_loader)
             for i, batchi in enumerate(test_loader):
-                input_ids, attention_mask, token_type_ids, audio, padding_mask = batchi
+                input_ids, attention_mask, token_type_ids, audio, label = batchi
                 input_ids = input_ids.to(device)
                 attention_mask = attention_mask.to(device)
-                token_type_ids = token_type_ids.to(device)
                 audio = audio.type(torch.LongTensor).to(device)
-                padding_mask = padding_mask.type(torch.bool).to(device)
-                prediction = model.predict(input_ids, attention_mask, device = device, target_seq_length = 1024)
-                f_path = os.path.join('output_midi', "text.mid")
-                decode_midi(prediction[0], file_path=f_path)
-                break
+                label = label.type(torch.LongTensor).to(device)
+                # loss = model(input_ids=input_ids, decoder_input_ids = audio, labels=label, attention_mask = attention_mask, return_dict=True).loss
+                predictions = model(input_ids, attention_mask, audio, tgt_key_padding_mask=None)
+                acc,  precision, recall, f = compute_all_metrics(predictions, label)
+                sum_acc += acc
+                sum_precision += precision
+                sum_recall += recall
+                sum_f += f
+
+        epoch_acc = sum_acc / n_test
+        epoch_pre = sum_precision / n_test
+        epoch_recall = sum_recall / n_test
+        epoch_f = sum_f / n_test
+        # acc_list.append(epoch_acc)
+        print("[Valid]: ACC: {} - Precision: {} Recall: {} F1:{}".format(str(epoch_acc), str(epoch_pre), str(epoch_recall), str(epoch_f)))
+
+
+
+        # with torch.no_grad():
+        #     for i, batchi in enumerate(test_loader):
+        #         input_ids, attention_mask, token_type_ids, audio, label = batchi
+        #         input_ids = input_ids.to(device)
+        #         attention_mask = attention_mask.to(device)
+        #         token_type_ids = token_type_ids.to(device)
+        #         audio = audio.type(torch.LongTensor).to(device)
+        #         label = label.type(torch.LongTensor).to(device)
+        #         prediction = model.predict(input_ids, attention_mask, device = device, target_seq_length = 1024)
+        #         f_path = os.path.join('output_midi', "text.mid")
+        #         decode_midi(prediction[0], file_path=f_path)
+        #         break
     
-    test_predict(test_loader, device, model)
+    test_predict(train_loader, device, model)

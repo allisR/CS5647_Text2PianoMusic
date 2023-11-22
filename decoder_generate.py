@@ -12,7 +12,7 @@ from dataset import ContextDataset
 from transformers import BertGenerationConfig, BertGenerationEncoder, EncoderDecoderModel, BertGenerationDecoder
 from third_party.constants import *
 from torch.utils.data import Dataset, DataLoader
-from dataset import create_epiano_datasets, compute_epiano_accuracy
+from dataset import create_epiano_datasets
 from transformers import Trainer, TrainingArguments,BertTokenizer, BertModel, BertPreTrainedModel, BertConfig
 from lr_scheduling import LrStepTracker
 import torch 

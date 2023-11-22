@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 from third_party.constants import *
+from sklearn.metrics import precision_recall_fscore_support
 
 SEQUENCE_START = 0
 
@@ -131,16 +132,8 @@ def create_epiano_datasets(dataset_root, max_seq, random_seq=True):
 
     return train_dataset, val_dataset, test_dataset
 
-def compute_epiano_accuracy(out, tgt):
-    """
-    ----------
-    Author: Damon Gwinn
-    ----------
-    Computes the average accuracy for the given input and output batches. Accuracy uses softmax
-    of the output.
-    ----------
-    """
 
+def compute_all_metrics(out, tgt):
     softmax = nn.Softmax(dim=-1)
     out = torch.argmax(softmax(out), dim=-1)
 
@@ -148,20 +141,21 @@ def compute_epiano_accuracy(out, tgt):
     tgt = tgt.flatten()
 
     mask = (tgt != TOKEN_PAD)
-
     out = out[mask]
     tgt = tgt[mask]
 
     # Empty
     if(len(tgt) == 0):
         return 1.0
-
+    
     num_right = (out == tgt)
     num_right = torch.sum(num_right).type(TORCH_FLOAT)
 
     acc = num_right / len(tgt)
+    precision, recall, f, _ = precision_recall_fscore_support(tgt.detach().cpu().numpy(), out.detach().cpu().numpy(), average='macro')
 
-    return acc
+    return float(acc), precision, recall, f
+
 
 class ContextDataset(Dataset):
     def __init__(self, x_inputs, tokenizer, max_len, audios, padding_masks, device):
