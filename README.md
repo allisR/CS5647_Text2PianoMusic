@@ -1,4 +1,6 @@
 # CS5647_Text2PianoMusic
+##Resource code,data and ralated files
+Github Link: https://github.com/allisR/CS5647_Text2PianoMusic.git
 ## Train audio decoder
 1. Generate dataset. Run `preprocess_midi.py` in the `utils` folder. This will write pre-processed data into the `data` folder split into `train`, `val`, and `test` as per Maestro's recommendation.
 2. Run `train_decoder.py` to train the audio decoder. We provided the pre-trained weight file as `all_best_acc.pickle`.
